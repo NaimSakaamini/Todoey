@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
 
     let realm = try! Realm()
     
@@ -19,6 +20,8 @@ class CategoryViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         loadCategory()
+        
+        tableView.separatorStyle = .none
     }
 
    
@@ -31,15 +34,24 @@ class CategoryViewController: UITableViewController {
         return categoryArray?.count ?? 1
     }
     
-    //create and set the value for each cell
+    
+    //overrides the super function
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        //create a reusable cell and add it to the table
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-       
-        cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No categories added"
+        
+        //access the cell that is created in the super class
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        if let category = categoryArray?[indexPath.row] {
+            cell.textLabel?.text = category.name
+            
+            guard let categoryColor = UIColor(hexString: category.bgColor) else {fatalError()}
+            
+            cell.backgroundColor = categoryColor
+            cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+        }
         
         return cell
     }
+    
     
     //MARK: - Add New Category
     
@@ -54,6 +66,7 @@ class CategoryViewController: UITableViewController {
             //add new categry to the context
             let newCategory = Category()
             newCategory.name = textField.text!
+            newCategory.bgColor = UIColor.randomFlat.hexValue()
             
             //save to database
             self.save(category: newCategory)
@@ -92,12 +105,29 @@ class CategoryViewController: UITableViewController {
         tableView.reloadData()
     }
     
+    //delete method
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryToDelete = self.categoryArray?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryToDelete.items)
+                    self.realm.delete(categoryToDelete)
+
+                }
+            } catch {
+                print(error)
+            }
+        }
+    }
+    
+    
     
     
     //MARK: - TableView Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "goToItems", sender: self)
     }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destinationVC = segue.destination as! ToDoListViewController
         
@@ -106,3 +136,5 @@ class CategoryViewController: UITableViewController {
         }
     }
 }
+    
+
